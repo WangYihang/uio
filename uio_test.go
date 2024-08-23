@@ -34,13 +34,13 @@ func TestUniversalRead(t *testing.T) {
 		tc := tc // capture range variable
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			r, err := uio.Open(tc.uri)
+			fd, err := uio.Open(tc.uri)
 			if err != nil {
 				t.Fatalf("Open(%q) returned error: %v", tc.uri, err)
 			}
-			defer r.Close()
+			defer fd.Close()
 
-			got, err := io.ReadAll(r)
+			got, err := io.ReadAll(fd)
 			if err != nil {
 				t.Fatalf("io.ReadAll returned error: %v", err)
 			}

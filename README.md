@@ -30,22 +30,22 @@ import (
 
 func main() {
     // Open an HTTP resource
-    r, err := uio.Open("http://example.com/data.txt")
+    fd, err := uio.Open("http://example.com/data.txt")
 
     // Open a file resource
-    // r, err := uio.Open("file:///path/to/data.txt")
+    // fd, err := uio.Open("file:///path/to/data.txt")
 
     // Open an S3 resource
-    // r, err := uio.Open("s3://bucket-name/data.txt")
+    // fd, err := uio.Open("s3://bucket-name/data.txt")
 
     if err != nil {
         fmt.Println("Error opening resource:", err)
         return
     }
-    defer r.Close()
+    defer fd.Close()
 
     // Read data from the resource
-    data, err := r.ReadAll()
+    data, err := fd.ReadAll()
     if err != nil {
         fmt.Println("Error reading data:", err)
         return
