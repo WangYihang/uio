@@ -3,12 +3,12 @@ package provider
 import (
 	"context"
 	"io"
+	"log/slog"
 	"net/url"
 	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"go.uber.org/zap"
 )
 
 // ExtractS3Params extracts S3 parameters from the URL query.
@@ -17,16 +17,16 @@ func extractS3Params(query url.Values) (endpoint, accessKey, secretKey string, i
 }
 
 // logS3Params logs the S3 connection parameters.
-func logS3Params(logger *zap.Logger, endpoint, bucketName, objectName string, insecure bool) {
+func logS3Params(logger *slog.Logger, endpoint, bucketName, objectName string, insecure bool) {
 	logger.Info("Opening S3 object",
-		zap.String("endpoint", endpoint),
-		zap.String("bucketName", bucketName),
-		zap.String("objectName", objectName),
-		zap.Bool("insecure", insecure),
+		slog.String("endpoint", endpoint),
+		slog.String("bucketName", bucketName),
+		slog.String("objectName", objectName),
+		slog.Bool("insecure", insecure),
 	)
 }
 
-func openS3(uri *url.URL, logger *zap.Logger) (io.ReadCloser, error) {
+func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 	query := uri.Query()
 	endpoint, accessKey, secretKey, insecure := extractS3Params(query)
 	bucketName := uri.Host
@@ -39,7 +39,7 @@ func openS3(uri *url.URL, logger *zap.Logger) (io.ReadCloser, error) {
 		Secure: !insecure,
 	})
 	if err != nil {
-		logger.Error("Failed to create MinIO client", zap.Error(err))
+		logger.Error("Failed to create MinIO client", slog.String("error", err.Error()))
 		return nil, err
 	}
 
@@ -50,7 +50,7 @@ func openS3(uri *url.URL, logger *zap.Logger) (io.ReadCloser, error) {
 		minio.GetObjectOptions{},
 	)
 	if err != nil {
-		logger.Error("Failed to get S3 object", zap.Error(err))
+		logger.Error("Failed to get S3 object", slog.String("error", err.Error()))
 		return nil, err
 	}
 

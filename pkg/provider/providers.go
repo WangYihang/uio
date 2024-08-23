@@ -2,14 +2,13 @@ package provider
 
 import (
 	"io"
+	"log/slog"
 	"net/url"
-
-	"go.uber.org/zap"
 )
 
-var SchemaMap = map[string]func(uri *url.URL, logger *zap.Logger) (io.ReadCloser, error){
-	"http":  openHTTP,
-	"https": openHTTP,
-	"file":  openFile,
-	"s3":    openS3,
+var SchemaMap = map[string]func(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error){
+	"http":  OpenHTTP,
+	"https": OpenHTTP,
+	"file":  OpenFile,
+	"s3":    OpenS3,
 }
