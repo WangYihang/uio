@@ -11,13 +11,18 @@ import (
 
 // OpenFile opens a local file specified by the URL.
 func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
-	if uri.Scheme == "" {
+	if uri.Scheme == "" && uri.Path == "-" {
 		return os.Stdin, nil
 	}
 
-	// Construct the file path from URL components.
-	// Use filepath.Join to handle platform-specific path separators.
-	path := filepath.Join(uri.Host, strings.TrimPrefix(uri.Path, "/"))
+	var path string
+	if uri.Scheme == "" {
+		path = uri.Path
+	} else {
+		// Construct the file path from URL components.
+		// Use filepath.Join to handle platform-specific path separators.
+		path = filepath.Join(uri.Host, strings.TrimPrefix(uri.Path, "/"))
+	}
 	logger.Info("Opening file", slog.String("path", path))
 
 	// Open the file.
