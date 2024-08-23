@@ -21,12 +21,14 @@ func Open(uri string) (io.ReadCloser, error) {
 		logger.Error("Invalid URI", slog.String("error", err.Error()))
 		return nil, fmt.Errorf("invalid URI: %w", err)
 	}
+
 	logger.Info("Parsed URI",
 		slog.String("scheme", u.Scheme),
 		slog.String("host", u.Host),
 		slog.String("path", u.Path),
 		slog.String("query", u.RawQuery),
 	)
+
 	if f, ok := provider.SchemaMap[u.Scheme]; ok {
 		return f(u, logger)
 	} else {

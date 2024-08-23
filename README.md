@@ -35,6 +35,9 @@ func main() {
     // Open a file resource
     // fd, err := uio.Open("file:///path/to/data.txt")
 
+    // Open stdin
+    // fd, err := uio.Open("-")
+
     // Open an S3 resource
     // fd, err := uio.Open("s3://bucket-name/data.txt")
 
