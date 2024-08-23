@@ -20,23 +20,21 @@ func extractS3Params(query url.Values) (endpoint, accessKey, secretKey string, i
 	return query.Get("endpoint"), query.Get("access_key"), query.Get("secret_key"), query.Get("insecure") != "false", query.Get("download") == "true"
 }
 
-// logS3Params logs the S3 connection parameters.
-func logS3Params(logger *slog.Logger, endpoint, bucketName, objectName string, insecure bool) {
-	logger.Info("Opening S3 object",
-		slog.String("endpoint", endpoint),
-		slog.String("bucketName", bucketName),
-		slog.String("objectName", objectName),
-		slog.Bool("insecure", insecure),
-	)
-}
-
 func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 	query := uri.Query()
 	endpoint, accessKey, secretKey, insecure, download := extractS3Params(query)
 	bucketName := uri.Host
 	objectName := strings.TrimLeft(uri.Path, "/")
 
-	logS3Params(logger, endpoint, bucketName, objectName, insecure)
+	logger.Info("Opening S3 object",
+		slog.String("endpoint", endpoint),
+		slog.String("accessKey", accessKey),
+		slog.String("secretKey", strings.Repeat("*", len(secretKey))),
+		slog.String("bucketName", bucketName),
+		slog.String("objectName", objectName),
+		slog.Bool("insecure", insecure),
+		slog.Bool("download", false),
+	)
 
 	minioClient, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
