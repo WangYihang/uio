@@ -5,7 +5,6 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
-	"path/filepath"
 	"strings"
 )
 
@@ -21,7 +20,10 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 	} else {
 		// Construct the file path from URL components.
 		// Use filepath.Join to handle platform-specific path separators.
-		path = filepath.Join(uri.Host, strings.TrimPrefix(uri.Path, "/"))
+		path = strings.Join([]string{
+			uri.Host,
+			strings.TrimLeft(uri.Path, "/"),
+		}, "/")
 	}
 	logger.Info("Opening file", slog.String("path", path))
 
