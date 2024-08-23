@@ -1,0 +1,26 @@
+services:
+  http:
+    image: nginx:latest
+    ports:
+      - 9090:80
+    volumes:
+      - ./data:/usr/share/nginx/html
+
+  minio:
+    image: bitnami/minio:latest
+    ports:
+      - 9000:9000
+      - 9001:9001
+    environment:
+      - MINIO_ROOT_USER=minio
+      - MINIO_ROOT_PASSWORD=3b3211d1-3fcf-438b-9ede-245ee0c9a5ff
+      - MINIO_DEFAULT_BUCKETS=uio
+      - MINIO_SCHEME=http
+      - BITNAMI_DEBUG=true
+    volumes:
+      - minio_data:/bitnami/minio/data
+
+volumes:
+  rabbitmq_data:
+  rabbitmq_log:
+  minio_data:
