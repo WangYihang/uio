@@ -52,7 +52,7 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 			context.Background(),
 			bucketName,
 			objectName,
-			"",
+			path,
 			minio.GetObjectOptions{},
 		)
 		if err != nil {
