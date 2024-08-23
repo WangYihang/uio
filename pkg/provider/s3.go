@@ -24,7 +24,7 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 	query := uri.Query()
 	endpoint, accessKey, secretKey, insecure, download := extractS3Params(query)
 	bucketName := uri.Host
-	objectName := strings.TrimLeft(uri.Path, "/")
+	objectName := uri.Path
 
 	logger.Info("Opening S3 object",
 		slog.String("endpoint", endpoint),
