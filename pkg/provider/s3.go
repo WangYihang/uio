@@ -10,13 +10,41 @@ import (
 	"strings"
 	"time"
 
+	"github.com/caarlos0/env"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
-// ExtractS3Params extracts S3 parameters from the URL query.
-func extractS3Params(query url.Values) (endpoint, accessKey, secretKey string, insecure bool, mode string) {
-	return query.Get("endpoint"), query.Get("access_key"), query.Get("secret_key"), query.Get("insecure") != "false", query.Get("mode")
+// S3Config holds S3 configuration details.
+type S3Config struct {
+	Endpoint  string `env:"S3_ENDPOINT"`
+	AccessKey string `env:"S3_ACCESS_KEY"`
+	SecretKey string `env:"S3_SECRET_KEY"`
+	Insecure  bool   `env:"S3_INSECURE"`
+}
+
+// LoadS3Config loads the configuration from environment variables or URL parameters.
+func LoadS3Config(query url.Values) (*S3Config, error) {
+	cfg := &S3Config{}
+	if err := env.Parse(cfg); err != nil {
+		return nil, fmt.Errorf("failed to parse environment variables: %w", err)
+	}
+
+	// Use URL parameters if provided, otherwise fall back to environment variables
+	if endpoint := query.Get("endpoint"); endpoint != "" {
+		cfg.Endpoint = endpoint
+	}
+	if accessKey := query.Get("access_key"); accessKey != "" {
+		cfg.AccessKey = accessKey
+	}
+	if secretKey := query.Get("secret_key"); secretKey != "" {
+		cfg.SecretKey = secretKey
+	}
+	if insecure := query.Get("insecure"); insecure != "" {
+		cfg.Insecure = insecure != "false"
+	}
+
+	return cfg, nil
 }
 
 // s3ReadOnlyCloser is a custom wrapper that handles only read operations with S3.
@@ -61,7 +89,7 @@ func (s *s3ReadWriteCloser) Write(p []byte) (n int, err error) {
 	return s.File.Write(p)
 }
 
-// s3ReadWriteCloser's Close method should handle the file upload if modified
+// Close uploads the temporary file to S3 if it has been modified.
 func (s *s3ReadWriteCloser) Close() error {
 	if !s.isModified {
 		s.logger.Info("No modifications detected, skipping upload")
@@ -102,9 +130,20 @@ func (s *s3ReadWriteCloser) Close() error {
 // OpenS3 opens an S3 object for reading or reading and writing.
 func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 	query := uri.Query()
-	endpoint, accessKey, secretKey, insecure, mode := extractS3Params(query)
+	envConfig, err := LoadS3Config(query)
+	if err != nil {
+		logger.Error("Failed to load S3 configuration", slog.String("error", err.Error()))
+		return nil, err
+	}
+
+	endpoint := envConfig.Endpoint
+	accessKey := envConfig.AccessKey
+	secretKey := envConfig.SecretKey
+	insecure := envConfig.Insecure
+
 	bucketName := uri.Host
 	objectName := strings.TrimLeft(uri.Path, "/")
+	mode := query.Get("mode")
 
 	logger.Info("Opening S3 object",
 		slog.String("endpoint", endpoint),
