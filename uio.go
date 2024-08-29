@@ -32,7 +32,7 @@ func Open(uri string) (io.ReadWriteCloser, error) {
 	if f, ok := provider.SchemaMap[u.Scheme]; ok {
 		return f(u, logger)
 	} else {
-		logger.Error("Fallback to file", slog.String("file", "stdin"))
+		logger.Error("Fallback to file", slog.String("file", "stdio"))
 		return provider.OpenFile(u, logger)
 	}
 }
