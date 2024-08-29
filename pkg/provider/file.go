@@ -13,13 +13,15 @@ import (
 type OpenFileMode string
 
 const (
+	// ModeRead will open the file for reading.
+	ModeRead OpenFileMode = "read"
 	// ModeWrite will truncate the file before writing.
 	ModeWrite OpenFileMode = "write"
 	// ModeAppend will append to the file.
 	ModeAppend OpenFileMode = "append"
 )
 
-// OpenFile opens a local file specified by the URL and supports both reading and writing.
+// OpenFile opens a local file specified by the URL and supports reading and writing.
 // If the path is "-", it returns os.Stdin for reading or os.Stdout for writing.
 func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 	if uri.Scheme == "" && uri.Path == "-" {
@@ -48,7 +50,9 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 	case ModeAppend:
 		flags = os.O_APPEND | os.O_CREATE | os.O_RDWR
 	case ModeWrite:
-		flags = os.O_TRUNC | os.O_CREATE | os.O_RDWR
+		flags = os.O_CREATE | os.O_RDWR
+	case ModeRead:
+		flags = os.O_RDONLY
 	default:
 		return nil, fmt.Errorf("invalid mode: %s", mode)
 	}

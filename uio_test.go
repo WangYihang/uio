@@ -65,13 +65,13 @@ func TestUniversalWrite(t *testing.T) {
 		{
 			name:      "File example",
 			uri:       "file://data/test_write_to_file.txt",
-			data:      []byte("Write Test Data"),
+			data:      []byte("Hello World!"),
 			verifyURI: "file://data/test_write_to_file.txt",
 		},
 		{
 			name:      "S3 example",
 			uri:       fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true&mode=write", suffix),
-			data:      []byte("Write Test Data"),
+			data:      []byte("Hello World!"),
 			verifyURI: fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true&mode=read", suffix),
 		},
 	}
