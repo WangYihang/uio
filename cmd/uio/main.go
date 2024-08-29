@@ -23,7 +23,10 @@ func main() {
 
 	scanner := bufio.NewScanner(fd)
 	for scanner.Scan() {
-		slog.Info("Read line", slog.String("line", scanner.Text()))
+		line := scanner.Text()
+		slog.Info("Read line", slog.String("line", line))
+		fd.Write([]byte(line + "\n"))
+		slog.Info("Write line", slog.String("line", line))
 	}
 
 	if err := scanner.Err(); err != nil {
