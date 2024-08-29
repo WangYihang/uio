@@ -17,7 +17,7 @@ import (
 
 // ExtractS3Params extracts S3 parameters from the URL query.
 func extractS3Params(query url.Values) (endpoint, accessKey, secretKey string, insecure bool, download bool) {
-	return query.Get("endpoint"), query.Get("access_key"), query.Get("secret_key"), query.Get("insecure") != "false", query.Get("download") == "true"
+	return query.Get("endpoint"), query.Get("access_key"), query.Get("secret_key"), query.Get("insecure") != "false", query.Has("download")
 }
 
 func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
@@ -33,7 +33,7 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 		slog.String("bucketName", bucketName),
 		slog.String("objectName", objectName),
 		slog.Bool("insecure", insecure),
-		slog.Bool("download", false),
+		slog.Bool("download", download),
 	)
 
 	minioClient, err := minio.New(endpoint, &minio.Options{
