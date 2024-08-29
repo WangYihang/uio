@@ -1,11 +1,22 @@
 package provider
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"net/url"
 	"os"
 	"strings"
+)
+
+// OpenFileMode represents the modes in which a file can be opened.
+type OpenFileMode string
+
+const (
+	// ModeWrite will truncate the file before writing.
+	ModeWrite OpenFileMode = "write"
+	// ModeAppend will append to the file.
+	ModeAppend OpenFileMode = "append"
 )
 
 // OpenFile opens a local file specified by the URL and supports both reading and writing.
@@ -21,16 +32,31 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		path = uri.Path
 	} else {
 		// Construct the file path from URL components.
-		// Use strings.Join to handle platform-specific path separators.
 		path = strings.Join([]string{
 			uri.Host,
 			strings.TrimLeft(uri.Path, "/"),
 		}, "/")
 	}
-	logger.Info("Opening file", slog.String("path", path))
 
-	// Open the file with read and write permissions.
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
+	mode := uri.Query().Get("mode")
+	if mode == "" {
+		mode = string(ModeWrite) // Default to write mode
+	}
+
+	var flags int
+	switch OpenFileMode(mode) {
+	case ModeAppend:
+		flags = os.O_APPEND | os.O_CREATE | os.O_RDWR
+	case ModeWrite:
+		flags = os.O_TRUNC | os.O_CREATE | os.O_RDWR
+	default:
+		return nil, fmt.Errorf("invalid mode: %s", mode)
+	}
+
+	logger.Info("Opening file", slog.String("path", path), slog.String("mode", mode))
+
+	// Open the file with the appropriate flags.
+	file, err := os.OpenFile(path, flags, 0644)
 	if err != nil {
 		logger.Error("Failed to open file", slog.String("error", err.Error()))
 		return nil, err
