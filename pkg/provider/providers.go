@@ -6,7 +6,7 @@ import (
 	"net/url"
 )
 
-var SchemaMap = map[string]func(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error){
+var SchemaMap = map[string]func(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error){
 	"http":  OpenHTTP,
 	"https": OpenHTTP,
 	"file":  OpenFile,

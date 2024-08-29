@@ -12,8 +12,8 @@ services:
       - 9000:9000
       - 9001:9001
     environment:
-      - MINIO_ROOT_USER=minio
-      - MINIO_ROOT_PASSWORD=3b3211d1-3fcf-438b-9ede-245ee0c9a5ff
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
       - MINIO_DEFAULT_BUCKETS=uio
       - MINIO_SCHEME=http
       - BITNAMI_DEBUG=true

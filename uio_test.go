@@ -2,10 +2,12 @@ package uio_test
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 
 	"github.com/WangYihang/uio"
+	"github.com/google/uuid"
 )
 
 func TestUniversalRead(t *testing.T) {
@@ -16,17 +18,17 @@ func TestUniversalRead(t *testing.T) {
 	}{
 		{
 			name:     "HTTP example",
-			uri:      "http://127.0.0.1:9090/example.txt",
+			uri:      "http://127.0.0.1:9090/test_read_from_http.txt",
 			expected: []byte("Hello World!"),
 		},
 		{
 			name:     "File example",
-			uri:      "file://data/example.txt",
+			uri:      "file://data/test_read_from_file.txt",
 			expected: []byte("Hello World!"),
 		},
 		{
 			name:     "S3 example",
-			uri:      "s3://uio/example.txt?endpoint=127.0.0.1:9000&access_key=xO7mW9YDxixgIqFqY4He&secret_key=UrEjic8z7qXKFy6gkH5jC5gcurJAbhaFhdsoW8KK&insecure=true",
+			uri:      "s3://uio/test_read_from_s3.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
 			expected: []byte("Hello World!"),
 		},
 	}
@@ -46,6 +48,63 @@ func TestUniversalRead(t *testing.T) {
 			}
 			if !bytes.Equal(got, tc.expected) {
 				t.Errorf("for URI %q, expected %v, got %v", tc.uri, tc.expected, got)
+			}
+		})
+	}
+}
+
+func TestUniversalWrite(t *testing.T) {
+	// Test cases for write operations
+	suffix := uuid.New().String()
+	testcases := []struct {
+		name      string
+		uri       string
+		data      []byte
+		verifyURI string
+	}{
+		{
+			name:      "File example",
+			uri:       "file://data/test_write_to_file.txt",
+			data:      []byte("Write Test Data"),
+			verifyURI: "file://data/test_write_to_file.txt",
+		},
+		{
+			name:      "S3 example",
+			uri:       fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true&mode=write", suffix),
+			data:      []byte("Write Test Data"),
+			verifyURI: fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true&mode=read", suffix),
+		},
+	}
+	for _, tc := range testcases {
+		tc := tc // capture range variable
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			// Write data to the file/S3
+			fd, err := uio.Open(tc.uri)
+			if err != nil {
+				t.Fatalf("Open(%q) returned error: %v", tc.uri, err)
+			}
+			_, err = fd.Write(tc.data)
+			if err != nil {
+				t.Fatalf("Write returned error: %v", err)
+			}
+			fd.Close()
+
+			// Read the written data
+			verifyFd, err := uio.Open(tc.verifyURI)
+			if err != nil {
+				t.Fatalf("Open(%q) for verification returned error: %v", tc.verifyURI, err)
+			}
+			got, err := io.ReadAll(verifyFd)
+			if err != nil {
+				t.Fatalf("io.ReadAll returned error: %v", err)
+			}
+			verifyFd.Close()
+
+			// Verify the written data
+			if !bytes.Equal(got, tc.data) {
+				t.Errorf("for URI %q, expected %v, got %v", tc.verifyURI, tc.data, got)
 			}
 		})
 	}

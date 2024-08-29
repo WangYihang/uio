@@ -14,8 +14,17 @@ var httpClient = &http.Client{
 	Timeout: 30 * time.Second, // Set a reasonable timeout for HTTP requests.
 }
 
+// readOnlyCloser is a wrapper that implements io.ReadWriteCloser but only supports reading.
+type readOnlyCloser struct {
+	io.ReadCloser
+}
+
+func (r *readOnlyCloser) Write(p []byte) (n int, err error) {
+	return 0, fmt.Errorf("write operation not supported for HTTP/HTTPS resources")
+}
+
 // OpenHTTP fetches the HTTP/HTTPS resource specified by the URL.
-func OpenHTTP(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
+func OpenHTTP(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 	logger.Info("Fetching HTTP/HTTPS resource", slog.String("url", uri.String()))
 
 	// Perform the HTTP GET request using the configured client.
@@ -33,5 +42,6 @@ func OpenHTTP(uri *url.URL, logger *slog.Logger) (io.ReadCloser, error) {
 		return nil, fmt.Errorf("%s: %d %s", errMsg, resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
-	return resp.Body, nil
+	// Wrap the response body in a readOnlyCloser and return it.
+	return &readOnlyCloser{resp.Body}, nil
 }

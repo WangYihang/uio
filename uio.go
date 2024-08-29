@@ -10,7 +10,7 @@ import (
 	"github.com/WangYihang/uio/pkg/provider"
 )
 
-func Open(uri string) (io.ReadCloser, error) {
+func Open(uri string) (io.ReadWriteCloser, error) {
 	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{
 		Level: slog.LevelDebug,
 	}))
@@ -32,7 +32,7 @@ func Open(uri string) (io.ReadCloser, error) {
 	if f, ok := provider.SchemaMap[u.Scheme]; ok {
 		return f(u, logger)
 	} else {
-		logger.Error("fallback to file", slog.String("file", "stdin"))
+		logger.Error("Fallback to file", slog.String("file", "stdin"))
 		return provider.OpenFile(u, logger)
 	}
 }
