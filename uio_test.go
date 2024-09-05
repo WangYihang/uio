@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/WangYihang/uio"
-	"github.com/google/uuid"
 )
 
 func TestUniversalRead(t *testing.T) {
@@ -71,7 +70,7 @@ func TestUniversalRead(t *testing.T) {
 
 func TestUniversalWrite(t *testing.T) {
 	// Test cases for write operations
-	suffix := uuid.New().String()
+	// suffix := uuid.New().String()
 	testcases := []struct {
 		name      string
 		uri       string
@@ -83,6 +82,12 @@ func TestUniversalWrite(t *testing.T) {
 			uri:       "file://data/test_write_to_file.txt",
 			data:      []byte("Hello World!"),
 			verifyURI: "file://data/test_write_to_file.txt",
+		},
+		{
+			name:      "File example",
+			uri:       "file://data/test_write_to_file.txt.gz?mode=write",
+			data:      []byte("Hello World!"),
+			verifyURI: "file://data/test_write_to_file.txt.gz",
 		},
 		{
 			name:      "S3 example",

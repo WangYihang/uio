@@ -43,7 +43,7 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 
 	mode := uri.Query().Get("mode")
 	if mode == "" {
-		mode = string(ModeWrite) // Default to write mode
+		mode = string(ModeRead) // Default to write mode
 	}
 
 	var flags int
@@ -58,7 +58,7 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		return nil, fmt.Errorf("invalid mode: %s", mode)
 	}
 
-	logger.Info("Opening file", slog.String("path", path), slog.String("mode", mode))
+	logger.Info("Opening file", slog.String("path", path), slog.String("mode", mode), slog.Int("flags", flags))
 
 	// Check if the file extension is ".gzip" or ".gz".
 	if strings.HasSuffix(path, ".gzip") || strings.HasSuffix(path, ".gz") {
@@ -69,14 +69,20 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 			return nil, err
 		}
 
-		// Create a gzip reader to decompress the file.
-		gzipReader, err := gzip.NewReader(file)
-		if err != nil {
-			logger.Error("Failed to create gzip reader", slog.String("error", err.Error()))
-			file.Close()
-			return nil, err
+		if OpenFileMode(mode) == ModeWrite {
+			// Create a gzip writer to compress the file.
+			gzipWriter := gzip.NewWriter(file)
+			return &writeOnlyCloser{gzipWriter}, nil
+		} else {
+			// Create a gzip reader to decompress the file.
+			gzipReader, err := gzip.NewReader(file)
+			if err != nil {
+				logger.Error("Failed to create gzip reader", slog.String("error", err.Error()))
+				file.Close()
+				return nil, err
+			}
+			return &readOnlyCloser{gzipReader}, nil
 		}
-		return &readOnlyCloser{gzipReader}, nil
 	}
 
 	// If the file extension is not ".gzip" or ".gz", open the file directly.
@@ -103,4 +109,13 @@ func (s *stdStreamWrapper) Write(p []byte) (n int, err error) {
 func (s *stdStreamWrapper) Close() error {
 	// No-op for stdin/stdout since we don't close these streams.
 	return nil
+}
+
+// writeOnlyCloser is a wrapper that implements io.ReadWriteCloser but only supports writing.
+type writeOnlyCloser struct {
+	io.WriteCloser
+}
+
+func (w *writeOnlyCloser) Read(p []byte) (n int, err error) {
+	return 0, fmt.Errorf("read operation not supported for file resources")
 }
