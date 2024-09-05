@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log/slog"
@@ -40,6 +41,18 @@ func OpenHTTP(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		logger.Error(errMsg, slog.Int("statusCode", resp.StatusCode))
 		resp.Body.Close() // Close the body before returning the error.
 		return nil, fmt.Errorf("%s: %d %s", errMsg, resp.StatusCode, http.StatusText(resp.StatusCode))
+	}
+
+	// Check if the opened file is compressed using gzip using url extension.
+	if uri.Path != "" && (uri.Path[len(uri.Path)-3:] == ".gz" || uri.Path[len(uri.Path)-5:] == ".gzip") {
+		// Create a gzip reader to decompress the file.
+		gzipReader, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			logger.Error("Failed to create gzip reader", slog.String("error", err.Error()))
+			resp.Body.Close()
+			return nil, err
+		}
+		return &readOnlyCloser{gzipReader}, nil
 	}
 
 	// Wrap the response body in a readOnlyCloser and return it.

@@ -16,19 +16,35 @@ func TestUniversalRead(t *testing.T) {
 		uri      string
 		expected []byte
 	}{
-		{
-			name:     "HTTP example",
-			uri:      "http://127.0.0.1:9090/test_read_from_http.txt",
-			expected: []byte("Hello World!"),
-		},
+
 		{
 			name:     "File example",
 			uri:      "file://data/test_read_from_file.txt",
 			expected: []byte("Hello World!"),
 		},
 		{
+			name:     "File Gzip example",
+			uri:      "file://data/test_read_from_file.txt.gz",
+			expected: []byte("Hello World!"),
+		},
+		{
+			name:     "HTTP example",
+			uri:      "http://127.0.0.1:9090/test_read_from_http.txt",
+			expected: []byte("Hello World!"),
+		},
+		{
+			name:     "HTTP Gzip example",
+			uri:      "http://127.0.0.1:9090/test_read_from_http.txt.gz",
+			expected: []byte("Hello World!"),
+		},
+		{
 			name:     "S3 example",
 			uri:      "s3://uio/test_read_from_s3.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
+			expected: []byte("Hello World!"),
+		},
+		{
+			name:     "S3 Gzip example",
+			uri:      "s3://uio/test_read_from_s3.txt.gz?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
 			expected: []byte("Hello World!"),
 		},
 	}

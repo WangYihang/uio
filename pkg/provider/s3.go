@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env"
+	"github.com/klauspost/compress/gzip"
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
@@ -194,6 +195,20 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		if err != nil {
 			logger.Error("Failed to get S3 object", slog.String("error", err.Error()))
 			return nil, err
+		}
+
+		// Check if the object is compressed using gzip
+		if strings.HasSuffix(objectName, ".gz") || strings.HasSuffix(objectName, ".gzip") {
+			gzipReader, err := gzip.NewReader(object)
+			if err != nil {
+				logger.Error("Failed to create gzip reader", slog.String("error", err.Error()))
+				object.Close()
+				return nil, err
+			}
+			return &s3ReadOnlyCloser{
+				object: gzipReader,
+				logger: logger,
+			}, nil
 		}
 
 		return &s3ReadOnlyCloser{

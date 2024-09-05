@@ -1,6 +1,7 @@
 package provider
 
 import (
+	"compress/gzip"
 	"fmt"
 	"io"
 	"log/slog"
@@ -59,7 +60,26 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 
 	logger.Info("Opening file", slog.String("path", path), slog.String("mode", mode))
 
-	// Open the file with the appropriate flags.
+	// Check if the file extension is ".gzip" or ".gz".
+	if strings.HasSuffix(path, ".gzip") || strings.HasSuffix(path, ".gz") {
+		// Open the file with the appropriate flags.
+		file, err := os.OpenFile(path, flags, 0644)
+		if err != nil {
+			logger.Error("Failed to open file", slog.String("error", err.Error()))
+			return nil, err
+		}
+
+		// Create a gzip reader to decompress the file.
+		gzipReader, err := gzip.NewReader(file)
+		if err != nil {
+			logger.Error("Failed to create gzip reader", slog.String("error", err.Error()))
+			file.Close()
+			return nil, err
+		}
+		return &readOnlyCloser{gzipReader}, nil
+	}
+
+	// If the file extension is not ".gzip" or ".gz", open the file directly.
 	file, err := os.OpenFile(path, flags, 0644)
 	if err != nil {
 		logger.Error("Failed to open file", slog.String("error", err.Error()))
