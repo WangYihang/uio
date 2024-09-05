@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/WangYihang/uio"
+	"github.com/google/uuid"
 )
 
 func TestUniversalRead(t *testing.T) {
@@ -70,7 +71,7 @@ func TestUniversalRead(t *testing.T) {
 
 func TestUniversalWrite(t *testing.T) {
 	// Test cases for write operations
-	// suffix := uuid.New().String()
+	suffix := uuid.New().String()
 	testcases := []struct {
 		name      string
 		uri       string
@@ -79,7 +80,7 @@ func TestUniversalWrite(t *testing.T) {
 	}{
 		{
 			name:      "File example",
-			uri:       "file://data/test_write_to_file.txt",
+			uri:       "file://data/test_write_to_file.txt?mode=write",
 			data:      []byte("Hello World!"),
 			verifyURI: "file://data/test_write_to_file.txt",
 		},
@@ -93,7 +94,7 @@ func TestUniversalWrite(t *testing.T) {
 			name:      "S3 example",
 			uri:       fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true&mode=write", suffix),
 			data:      []byte("Hello World!"),
-			verifyURI: fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true&mode=read", suffix),
+			verifyURI: fmt.Sprintf("s3://uio/test_write_to_s3_%s.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true", suffix),
 		},
 	}
 	for _, tc := range testcases {

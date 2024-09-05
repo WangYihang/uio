@@ -77,6 +77,7 @@ type s3ReadWriteCloser struct {
 	objectName string
 	logger     *slog.Logger
 	isModified bool // Indicates if the file has been modified
+	fileWriter io.WriteCloser
 }
 
 // Read reads data from the temporary file.
@@ -87,7 +88,7 @@ func (s *s3ReadWriteCloser) Read(p []byte) (n int, err error) {
 // Write writes data to the temporary file.
 func (s *s3ReadWriteCloser) Write(p []byte) (n int, err error) {
 	s.isModified = true // Mark the file as modified
-	return s.File.Write(p)
+	return s.fileWriter.Write(p)
 }
 
 // Close uploads the temporary file to S3 if it has been modified.
@@ -176,6 +177,15 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		// No need to check if the object exists; just create a temporary file for write operations
 		logger.Info("Opened temporary file for S3 write operations", slog.String("path", tempFile.Name()))
 
+		// Check if the object should be compressed using gzip
+		// Create a file writer based on the object name extension
+		var fileWriter io.WriteCloser
+		if strings.HasSuffix(objectName, ".gz") || strings.HasSuffix(objectName, ".gzip") {
+			fileWriter = gzip.NewWriter(tempFile)
+		} else {
+			fileWriter = tempFile
+		}
+
 		return &s3ReadWriteCloser{
 			File:       tempFile,
 			client:     minioClient,
@@ -183,6 +193,7 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 			objectName: objectName,
 			logger:     logger,
 			isModified: false, // Initially, the file is not modified
+			fileWriter: fileWriter,
 		}, nil
 	} else {
 		// Only read operations
