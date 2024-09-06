@@ -93,6 +93,9 @@ func (s *s3ReadWriteCloser) Write(p []byte) (n int, err error) {
 
 // Close uploads the temporary file to S3 if it has been modified.
 func (s *s3ReadWriteCloser) Close() error {
+	// Close the file writer
+	s.fileWriter.Close()
+
 	if !s.isModified {
 		s.logger.Info("No modifications detected, skipping upload")
 		return s.File.Close()
