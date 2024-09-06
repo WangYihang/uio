@@ -44,7 +44,7 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 
 	mode := uri.Query().Get("mode")
 	if mode == "" {
-		mode = string(ModeRead) // Default to write mode
+		mode = string(ModeWrite) // Default to read write mode
 	}
 
 	var flags int
