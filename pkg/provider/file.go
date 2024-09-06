@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -72,6 +73,11 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		if OpenFileMode(mode) == ModeWrite {
 			// Create a gzip writer to compress the file.
 			gzipWriter := gzip.NewWriter(file)
+			if strings.HasSuffix(path, ".gzip") {
+				gzipWriter.Name = strings.TrimSuffix(filepath.Base(path), ".gzip")
+			} else {
+				gzipWriter.Name = strings.TrimSuffix(filepath.Base(path), ".gz")
+			}
 			return &writeOnlyCloser{gzipWriter}, nil
 		} else {
 			// Create a gzip reader to decompress the file.

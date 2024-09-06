@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -184,7 +185,13 @@ func OpenS3(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 		// Create a file writer based on the object name extension
 		var fileWriter io.WriteCloser
 		if strings.HasSuffix(objectName, ".gz") || strings.HasSuffix(objectName, ".gzip") {
-			fileWriter = gzip.NewWriter(tempFile)
+			gzipWriter := gzip.NewWriter(tempFile)
+			if strings.HasSuffix(objectName, ".gzip") {
+				gzipWriter.Name = strings.TrimSuffix(filepath.Base(objectName), ".gzip")
+			} else {
+				gzipWriter.Name = strings.TrimSuffix(filepath.Base(objectName), ".gz")
+			}
+			fileWriter = gzipWriter
 		} else {
 			fileWriter = tempFile
 		}
