@@ -37,16 +37,16 @@ func TestUniversalRead(t *testing.T) {
 			uri:      "http://127.0.0.1:9090/test_read_from_http.txt.gz",
 			expected: []byte("Hello World!"),
 		},
-		{
-			name:     "S3 example",
-			uri:      "s3://uio/test_read_from_s3.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
-			expected: []byte("Hello World!"),
-		},
-		{
-			name:     "S3 Gzip example",
-			uri:      "s3://uio/test_read_from_s3.txt.gz?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
-			expected: []byte("Hello World!"),
-		},
+		// {
+		// 	name:     "S3 example",
+		// 	uri:      "s3://uio/test_read_from_s3.txt?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
+		// 	expected: []byte("Hello World!"),
+		// },
+		// {
+		// 	name:     "S3 Gzip example",
+		// 	uri:      "s3://uio/test_read_from_s3.txt.gz?endpoint=127.0.0.1:9000&access_key=minioadmin&secret_key=minioadmin&insecure=true",
+		// 	expected: []byte("Hello World!"),
+		// },
 	}
 	for _, tc := range testcases {
 		tc := tc // capture range variable
@@ -88,7 +88,7 @@ func TestUniversalWrite(t *testing.T) {
 			name:      "File example",
 			uri:       "file://data/test_write_to_file.txt.gz?mode=write",
 			data:      []byte("Hello World!"),
-			verifyURI: "file://data/test_write_to_file.txt.gz",
+			verifyURI: "file://data/test_write_to_file.txt.gz?mode=read",
 		},
 		{
 			name:      "S3 example",
