@@ -72,7 +72,12 @@ func OpenFile(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
 
 		if OpenFileMode(mode) == ModeWrite {
 			// Create a gzip writer to compress the file.
-			gzipWriter := gzip.NewWriter(file)
+			gzipWriter, err := gzip.NewWriterLevel(file, gzip.BestCompression)
+			if err != nil {
+				logger.Error("Failed to create gzip writer", slog.String("error", err.Error()))
+				file.Close()
+				return nil, err
+			}
 			if strings.HasSuffix(path, ".gzip") {
 				gzipWriter.Name = strings.TrimSuffix(filepath.Base(path), ".gzip")
 			} else {
