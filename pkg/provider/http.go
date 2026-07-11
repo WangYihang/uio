@@ -10,51 +10,41 @@ import (
 	"time"
 )
 
-// httpClient is a configurable HTTP client.
+// httpClient is the shared HTTP client used for all HTTP/HTTPS requests.
 var httpClient = &http.Client{
 	Timeout: 30 * time.Second, // Set a reasonable timeout for HTTP requests.
 }
 
-// readOnlyCloser is a wrapper that implements io.ReadWriteCloser but only supports reading.
-type readOnlyCloser struct {
-	io.ReadCloser
-}
-
-func (r *readOnlyCloser) Write(p []byte) (n int, err error) {
-	return 0, fmt.Errorf("write operation not supported for HTTP/HTTPS resources")
-}
-
-// OpenHTTP fetches the HTTP/HTTPS resource specified by the URL.
+// OpenHTTP fetches the HTTP/HTTPS resource identified by uri. The returned
+// value is read-only; write attempts fail with errWriteNotSupported. Resources
+// whose path ends in .gz or .gzip are transparently decompressed.
 func OpenHTTP(uri *url.URL, logger *slog.Logger) (io.ReadWriteCloser, error) {
-	logger.Info("Fetching HTTP/HTTPS resource", slog.String("url", uri.String()))
+	logger.Info("fetching HTTP/HTTPS resource", slog.String("url", uri.String()))
 
-	// Perform the HTTP GET request using the configured client.
+	// Perform the HTTP GET request using the shared client.
 	resp, err := httpClient.Get(uri.String())
 	if err != nil {
-		logger.Error("Failed to fetch HTTP/HTTPS resource", slog.String("error", err.Error()))
+		logger.Error("failed to fetch HTTP/HTTPS resource", slog.String("error", err.Error()))
 		return nil, err
 	}
 
 	// Check for non-2xx status codes and handle errors accordingly.
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		errMsg := "Received non-2xx response code"
-		logger.Error(errMsg, slog.Int("statusCode", resp.StatusCode))
-		resp.Body.Close() // Close the body before returning the error.
-		return nil, fmt.Errorf("%s: %d %s", errMsg, resp.StatusCode, http.StatusText(resp.StatusCode))
+		_ = resp.Body.Close()
+		logger.Error("received non-2xx response code", slog.Int("statusCode", resp.StatusCode))
+		return nil, fmt.Errorf("received non-2xx response code: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
-	// Check if the opened file is compressed using gzip using url extension.
-	if uri.Path != "" && (uri.Path[len(uri.Path)-3:] == ".gz" || uri.Path[len(uri.Path)-5:] == ".gzip") {
-		// Create a gzip reader to decompress the file.
+	// Transparently decompress gzip-compressed resources based on the extension.
+	if isGzip(uri.Path) {
 		gzipReader, err := gzip.NewReader(resp.Body)
 		if err != nil {
-			logger.Error("Failed to create gzip reader", slog.String("error", err.Error()))
-			resp.Body.Close()
+			_ = resp.Body.Close()
+			logger.Error("failed to create gzip reader", slog.String("error", err.Error()))
 			return nil, err
 		}
-		return &readOnlyCloser{gzipReader}, nil
+		return &readCloser{Reader: gzipReader, closers: []io.Closer{gzipReader, resp.Body}}, nil
 	}
 
-	// Wrap the response body in a readOnlyCloser and return it.
-	return &readOnlyCloser{resp.Body}, nil
+	return &readCloser{Reader: resp.Body, closers: []io.Closer{resp.Body}}, nil
 }

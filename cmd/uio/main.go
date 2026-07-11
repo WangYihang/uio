@@ -1,36 +1,30 @@
 package main
 
 import (
-	"bufio"
-	"log/slog"
+	"fmt"
+	"io"
 	"os"
 
 	"github.com/WangYihang/uio"
 )
 
+// uio is a small cat-like tool: it opens the resource named by the single
+// argument and copies its contents to standard output.
 func main() {
 	if len(os.Args) != 2 {
-		slog.Error("Usage: uio <uri>")
+		fmt.Fprintln(os.Stderr, "usage: uio <uri>")
 		os.Exit(1)
 	}
 
 	fd, err := uio.Open(os.Args[1])
 	if err != nil {
-		slog.Error("Failed to open resource", slog.String("error", err.Error()))
+		fmt.Fprintf(os.Stderr, "failed to open resource: %v\n", err)
 		os.Exit(1)
 	}
-	defer fd.Close()
+	defer func() { _ = fd.Close() }()
 
-	scanner := bufio.NewScanner(fd)
-	for scanner.Scan() {
-		line := scanner.Text()
-		slog.Info("Read line", slog.String("line", line))
-		fd.Write([]byte(line + "\n"))
-		slog.Info("Write line", slog.String("line", line))
-	}
-
-	if err := scanner.Err(); err != nil {
-		slog.Error("Failed to read resource", slog.String("error", err.Error()))
+	if _, err := io.Copy(os.Stdout, fd); err != nil {
+		fmt.Fprintf(os.Stderr, "failed to read resource: %v\n", err)
 		os.Exit(1)
 	}
 }
