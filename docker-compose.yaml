@@ -1,11 +1,8 @@
+# MinIO backs the S3 integration tests (see integration_s3_test.go).
+#
+#   docker compose up -d
+#   UIO_TEST_S3=1 go test ./...
 services:
-  http:
-    image: nginx:latest
-    ports:
-      - 9090:80
-    volumes:
-      - ./data:/usr/share/nginx/html
-
   minio:
     image: bitnami/minio:latest
     ports:
@@ -16,7 +13,6 @@ services:
       - MINIO_ROOT_PASSWORD=minioadmin
       - MINIO_DEFAULT_BUCKETS=uio
       - MINIO_SCHEME=http
-      - BITNAMI_DEBUG=true
     volumes:
       - minio_data:/bitnami/minio/data
 

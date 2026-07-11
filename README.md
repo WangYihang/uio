@@ -1,8 +1,9 @@
 # uio
 
-`uio` is a library for unified access to data across HTTP(S), the local file
-system, and S3-compatible storage. It exposes a single `Open` function that
-returns an `io.ReadWriteCloser`, so the same code can read from (or write to) any
+`uio` provides unified access to data across HTTP(S), the local file system, and
+S3-compatible object storage behind one small API. [`Open`](https://pkg.go.dev/github.com/WangYihang/uio#Open)
+returns an `io.ReadCloser` and [`Create`](https://pkg.go.dev/github.com/WangYihang/uio#Create)
+returns an `io.WriteCloser`, so the same code can move bytes to or from any
 supported backend. Files ending in `.gz`/`.gzip` are compressed and decompressed
 transparently.
 
@@ -11,7 +12,9 @@ transparently.
 - Read from HTTP/HTTPS, the file system, S3, and standard input.
 - Write to the file system, S3, and standard output.
 - Automatic gzip compression/decompression based on the file extension.
+- First-class `context.Context` for cancellation and timeouts.
 - Silent by default; opt in to logging with `WithLogger`.
+- Extensible: register your own scheme with `Register`.
 
 ## Installation
 
@@ -19,12 +22,15 @@ transparently.
 go get github.com/WangYihang/uio
 ```
 
+Requires Go 1.25 or newer.
+
 ## Usage
 
 ```go
 package main
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -32,84 +38,124 @@ import (
 )
 
 func main() {
-	fd, err := uio.Open("http://example.com/data.txt")
-	if err != nil {
-		fmt.Println("Error opening resource:", err)
-		return
-	}
-	defer fd.Close()
+	ctx := context.Background()
 
-	data, err := io.ReadAll(fd)
+	// Read (decompressed automatically because of the .gz suffix).
+	r, err := uio.Open(ctx, "https://example.com/data.txt.gz")
 	if err != nil {
-		fmt.Println("Error reading data:", err)
-		return
+		panic(err)
 	}
-	fmt.Println("Data:", string(data))
+	defer r.Close()
+
+	data, err := io.ReadAll(r)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(data))
+
+	// Write (compressed automatically because of the .gz suffix).
+	w, err := uio.Create(ctx, "file:///tmp/out.txt.gz")
+	if err != nil {
+		panic(err)
+	}
+	if _, err := w.Write(data); err != nil {
+		panic(err)
+	}
+	// Close flushes the gzip stream (and, for S3, performs the upload).
+	if err := w.Close(); err != nil {
+		panic(err)
+	}
 }
 ```
 
 ### Supported URIs
 
-| URI                                   | Description                                  |
-| ------------------------------------- | -------------------------------------------- |
-| `http://host/data.txt`                | Read over HTTP (read-only)                   |
-| `https://host/data.txt.gz`            | Read over HTTPS, decompressed automatically  |
-| `file://path/to/data.txt`             | Read a local file (relative to the cwd)      |
-| `file:///abs/path/data.txt?mode=write`| Write (truncate) a local file                |
-| `s3://bucket/key.txt`                 | Read an S3 object                            |
-| `s3://bucket/key.txt?mode=write`      | Write an S3 object                           |
-| `-`                                   | Read from stdin / write to stdout            |
+| URI                                    | `Open` | `Create` | Notes                              |
+| -------------------------------------- | :----: | :------: | ---------------------------------- |
+| `http(s)://host/data.txt`              |   ✅   |    —     | Read-only                          |
+| `file://path/to/data.txt`              |   ✅   |    ✅    | Relative to the working directory  |
+| `file:///abs/path/data.txt`            |   ✅   |    ✅    | Absolute path                      |
+| `s3://bucket/key.txt`                  |   ✅   |    ✅    | S3-compatible object storage       |
+| `-`                                    |   ✅   |    ✅    | Standard input / standard output   |
 
-### File modes
+Any name ending in `.gz` or `.gzip` is gzip-encoded on `Create` and decoded on
+`Open`.
 
-Local file and S3 access accept a `mode` query parameter:
+### The command-line tool
 
-| Mode     | Behavior                                             |
-| -------- | ---------------------------------------------------- |
-| `read`   | Open for reading (**default**); errors if missing    |
-| `write`  | Truncate (creating if needed) and write              |
-| `append` | Append, creating the file if needed (local files)    |
+`cmd/uio` is a universal copy tool: `uio <src> [dst]`. With `dst` omitted it
+writes to standard output.
 
-`read` is the default so that opening a resource never creates or clobbers it by
-accident. Pass `?mode=write` to write. Gzip is applied automatically when the
-name ends in `.gz` or `.gzip`.
+```sh
+go run ./cmd/uio https://example.com/data.txt.gz        # print, decompressed
+go run ./cmd/uio s3://bucket/key.txt ./key.txt          # download
+go run ./cmd/uio ./key.txt s3://bucket/key.txt.gz       # upload, compressed
+```
 
-### S3 configuration
+## Options
 
-S3 credentials can be provided via query parameters or environment variables
-(query parameters take precedence):
+`Open` and `Create` accept functional options:
 
-| Query parameter | Environment variable | Description                       |
-| --------------- | -------------------- | --------------------------------- |
-| `endpoint`      | `S3_ENDPOINT`        | S3 endpoint (host:port)           |
-| `access_key`    | `S3_ACCESS_KEY`      | Access key                        |
-| `secret_key`    | `S3_SECRET_KEY`      | Secret key                        |
-| `insecure`      | `S3_INSECURE`        | Use HTTP instead of HTTPS         |
-
-> Prefer environment variables for credentials. Values placed in the URL query
-> may end up in logs or process listings.
-
-### Logging
-
-`Open` is silent by default. Pass a `*slog.Logger` to enable diagnostics:
+| Option                                  | Effect                                        |
+| --------------------------------------- | --------------------------------------------- |
+| `WithLogger(*slog.Logger)`              | Enable logging (silent by default)            |
+| `WithHTTPClient(*http.Client)`          | Use a custom HTTP client                      |
+| `WithCompression(Compression)`          | Force `CompressionGzip` / `CompressionNone`   |
+| `WithoutCompression()`                  | Disable gzip regardless of extension          |
+| `WithGzipLevel(int)`                    | Set the gzip level used on write              |
+| `WithAppend()`                          | Append instead of truncating (file only)      |
+| `WithS3Credentials(endpoint, ak, sk, secure)` | Configure the S3 endpoint and credentials |
 
 ```go
 logger := slog.New(slog.NewTextHandler(os.Stderr, nil))
-fd, err := uio.Open("s3://bucket/key.txt", uio.WithLogger(logger))
+w, err := uio.Create(ctx, "s3://bucket/key.txt",
+	uio.WithLogger(logger),
+	uio.WithAppend(), // ignored by S3, honoured by files
+)
 ```
+
+### S3 configuration
+
+S3 settings resolve in order of precedence: **URL query parameters** override
+values from `WithS3Credentials`, which override the environment variables.
+
+| Query parameter | Environment variable | Description                 |
+| --------------- | -------------------- | --------------------------- |
+| `endpoint`      | `S3_ENDPOINT`        | Endpoint (`host:port`)      |
+| `access_key`    | `S3_ACCESS_KEY`      | Access key                  |
+| `secret_key`    | `S3_SECRET_KEY`      | Secret key                  |
+| `insecure`      | `S3_INSECURE`        | Use HTTP instead of HTTPS   |
+
+> Prefer environment variables or `WithS3Credentials` for secrets. Credentials
+> placed in a URL query may leak into logs or process listings.
+
+## Extending
+
+Register a `Provider` to add a scheme:
+
+```go
+uio.Register("gcs", myGCSProvider{})
+r, err := uio.Open(ctx, "gcs://bucket/object")
+```
+
+Compression is applied by uio around whatever reader or writer a provider
+returns, so providers only deal with raw bytes.
 
 ## Development
 
-The test suite is self-contained (HTTP tests use `httptest`). Run it with:
+The unit tests are self-contained — HTTP uses `httptest` and S3 uses an
+in-memory store, so no external services are required:
 
 ```sh
-go test ./...
+make test      # or: go test ./...
+make race      # race detector
+make cover     # coverage summary
+make lint      # golangci-lint
 ```
 
-S3 integration tests are skipped unless `UIO_TEST_S3=1` is set and a compatible
-endpoint is running:
+The S3 integration tests run against the `docker-compose` MinIO service and are
+skipped unless `UIO_TEST_S3` is set:
 
 ```sh
-docker compose up -d
-UIO_TEST_S3=1 go test ./...
+make integration
 ```
