@@ -4,7 +4,7 @@
 #   UIO_TEST_S3=1 go test ./...
 services:
   minio:
-    image: bitnami/minio:latest
+    image: soldevelo/minio:latest
     ports:
       - 9000:9000
       - 9001:9001
